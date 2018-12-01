@@ -12,6 +12,7 @@ public:
   uint8_t dataLength;
 
   void begin(uint8_t irPin);
+  void enableBlink(bool enabled);
   bool hasData();
   bool decodeData();
   void reset();
