@@ -9,7 +9,7 @@
 #include <Quest_IR_Receiver.h>
 
 // update this pin
-const int PIN_IR_RECEIVER = 10;
+const int PIN_IR_RECEIVER = 7;
 Quest_IR_Receiver irReceiver;
 
 void setup()
