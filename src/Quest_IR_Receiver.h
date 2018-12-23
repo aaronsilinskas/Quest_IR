@@ -1,7 +1,7 @@
 #ifndef quest_ir_receiver_h
 #define quest_ir_receiver_h
 
-#include <IRLibAll.h>
+#include "./irlib2/IRLibAll.h"
 
 #define MAX_IR_DATA_LENGTH 48
 

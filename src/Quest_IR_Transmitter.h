@@ -3,8 +3,8 @@
 
 #define IR_SEND_PWM_PIN 11
 
-#include <IRLibSendBase.h>
-#include <IRLib_HashRaw.h>
+#include "irlib2/IRLibSendBase.h"
+#include "irlib2/IRLib_HashRaw.h"
 
 class Quest_IR_Transmitter
 {
