@@ -9,9 +9,8 @@
 class Quest_IR_Transmitter
 {
   public:
-    // For now, IR send pin must be set via: #define IR_SEND_PWM_PIN 4
-    void begin();
-    void send(uint16_t *buffer, uint8_t length);
+    void begin();    
+    void sendRawSignal(uint16_t *buffer, uint8_t length);
 
   private:
     IRsendRaw sender;
