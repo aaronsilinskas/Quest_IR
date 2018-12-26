@@ -18,6 +18,7 @@ void setup()
 
     // start to listen for IR signals on the given pin
     irReceiver.begin(PIN_IR_RECEIVER);
+    irReceiver.enableBlink(true);
 }
 
 void loop()
