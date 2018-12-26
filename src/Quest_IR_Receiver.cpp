@@ -61,7 +61,7 @@ bool Quest_IR_Receiver::decodeData()
     return false;
 }
 
-void Quest_IR_Receiver::dumpData()
+void Quest_IR_Receiver::dumpRawSignal()
 {
     Serial.print(F("Header: "));
     Serial.print(recvGlobal.recvBuffer[1], DEC);

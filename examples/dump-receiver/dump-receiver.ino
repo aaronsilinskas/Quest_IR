@@ -27,7 +27,7 @@ void loop()
     if (irReceiver.hasData())
     {
         // data was received, dump it to Serial
-        irReceiver.dumpData();
+        irReceiver.dumpRawSignal();
 
         // make sure the receiver is reset to decode the next signal
         irReceiver.reset();
