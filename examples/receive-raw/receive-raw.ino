@@ -1,4 +1,4 @@
-/* dump-receiver.cpp Example sketch for Quest IR Library
+/* receive-raw.ino Example sketch for Quest IR Library
  * This example will receive IR signals from a pin and
  * log the mark and delay times to Serial.
  * 
