@@ -24,10 +24,7 @@ void Quest_IR_Transmitter::sendRawSignal(uint16_t *buffer, uint8_t length)
 void Quest_IR_Transmitter::clearBits()
 {
     nextBitPosition = 0;
-    for (uint8_t i = 0; i < QIR_BIT_BUFFERS; i++)
-    {
-        bitBuffers[i] = 0;
-    }
+    memset(bitBuffers, 0, sizeof(bitBuffers));
 }
 
 bool Quest_IR_Transmitter::addBits(uint32_t data, uint8_t bitsToSend)

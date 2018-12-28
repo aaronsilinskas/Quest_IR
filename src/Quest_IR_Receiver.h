@@ -16,7 +16,7 @@ public:
   bool hasData();
   bool decodeData();
   void reset();
-  void dumpRawSignal();
+  void printRawSignal();
 
 private:
   IRrecvPCI receiver;

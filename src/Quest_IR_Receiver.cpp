@@ -3,10 +3,11 @@
 void Quest_IR_Receiver::begin(uint8_t irPin)
 {
     receiver = IRrecvPCI(irPin);
-    receiver.enableIRIn();    
+    receiver.enableIRIn();
 }
 
-void Quest_IR_Receiver::enableBlink(bool enabled) {
+void Quest_IR_Receiver::enableBlink(bool enabled)
+{
     receiver.blink13(enabled);
 }
 
@@ -61,7 +62,7 @@ bool Quest_IR_Receiver::decodeData()
     return false;
 }
 
-void Quest_IR_Receiver::dumpRawSignal()
+void Quest_IR_Receiver::printRawSignal()
 {
     Serial.print(F("Header: "));
     Serial.print(recvGlobal.recvBuffer[1], DEC);
