@@ -8,11 +8,16 @@
  * mark and space, halving the transmission size.
  * If the number of bits sent is even, an addition padding mark will be sent
  * for IR signal compatibility that will be ignored by the receiver.
+ * Pulse timing is not 100% accurate, so if a pulse is less than the expected
+ * value + QIR_ERROR_MARGIN, then it will still count as that value. For 
+ * instance, a pulse of 680 is less than QIR_PULSE_ZERO + QIR_PULSE_MARGIN so
+ * will count as a zero bit.
  */
 #ifndef quest_ir_format_h
 #define quest_ir_format_h
 
 #define QIR_PULSE 500
+#define QIR_ERROR_MARGIN 250
 
 #define QIR_HEADER_MARK QIR_PULSE * 8
 #define QIR_HEADER_SPACE QIR_PULSE * 6
