@@ -1,26 +1,35 @@
+/* Quest_IR_Receiver.h Quest IR Receiver Library
+ * Receives encoded data in the Quest format, but can also print raw marks
+ * and spaces for debugging. See Quest_IR_Format for format notes.
+ */
 #ifndef quest_ir_receiver_h
 #define quest_ir_receiver_h
 
-#include "./irlib2/IRLibAll.h"
+#include "./irlib2/IRLibRecvPCI.h"
+#include "Quest_IR_Format.h"
 
-#define MAX_IR_DATA_LENGTH 48
+// #define DEBUG_IR_RECEIVER
 
 class Quest_IR_Receiver
 {
 public:
-  uint8_t data[MAX_IR_DATA_LENGTH];
-  uint8_t dataLength;
+  uint16_t bitsReceived;
 
   void begin(uint8_t irPin);
   void enableBlink(bool enabled);
   bool hasData();
-  bool decodeData();
+  uint32_t readBits(uint8_t bitsToRead);
   void reset();
   void printRawSignal();
 
 private:
   IRrecvPCI receiver;
-  bool checkBuffer(bufIndex_t index, uint16_t expected);
+  uint16_t nextBitPosition;
+  uint8_t bitBuffers[QIR_BIT_BUFFERS];
+
+  void clearBuffer();
+  bool checkBuffer(uint16_t expected, uint16_t actual);
+  void attemptDecode();
 };
 
 #endif
