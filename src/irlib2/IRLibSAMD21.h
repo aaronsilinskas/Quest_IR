@@ -106,7 +106,7 @@
   //Settings for Adafruit Itsy-Bitsy M0
   //Default is 9. Available are 0-5, 7, 9-13, 17/A3, 18/A4,
   //  26/SDA, 27/SCL, 28/MSIO, 29/MOSI, 30/SCI
-  #define IR_SEND_PWM_PIN 3
+  #define IR_SEND_PWM_PIN 4
   #if ( (IR_SEND_PWM_PIN==6)   || (IR_SEND_PWM_PIN==8) \
       || ( (IR_SEND_PWM_PIN>13) && (IR_SEND_PWM_PIN<17) ) \
  	  || ( (IR_SEND_PWM_PIN>18) && (IR_SEND_PWM_PIN<26) ) \
