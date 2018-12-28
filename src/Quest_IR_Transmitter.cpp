@@ -155,9 +155,11 @@ bool Quest_IR_Transmitter::sendBits()
             }
         }
 
+        // move to the next bit in the buffer
         bitMask >>= 1;
         if (bitMask == 0)
         {
+            // finished the current buffer, move to the next one
             bufferPos++;
             bitMask = 0b10000000;
         }

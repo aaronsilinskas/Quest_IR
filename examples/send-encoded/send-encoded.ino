@@ -4,7 +4,7 @@
  * Note: For ItsyBitsy M0, the IR LED is set to pin 4 for 
  * compatibility with the Quest stack running on a single MCU.
  */
-#include "Quest_IR_Transmitter.h"
+#include <Quest_IR_Transmitter.h>
 
 Quest_IR_Transmitter irTransmitter;
 
