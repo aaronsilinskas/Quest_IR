@@ -23,8 +23,19 @@ bool Quest_IR_Receiver::hasData()
 
 void Quest_IR_Receiver::reset()
 {
+    decodeState = NoData;
     clearBuffer();
     receiver.enableIRIn();
+}
+
+uint16_t Quest_IR_Receiver::unreadBits()
+{
+    // bit position can be greater than received when more bits are read than available
+    if (nextBitPosition > bitsReceived)
+    {
+        return 0;
+    }
+    return bitsReceived - nextBitPosition;
 }
 
 uint32_t Quest_IR_Receiver::readBits(uint8_t bitsToRead)
@@ -32,9 +43,6 @@ uint32_t Quest_IR_Receiver::readBits(uint8_t bitsToRead)
     // already read all of the bits
     if (nextBitPosition >= bitsReceived)
     {
-#ifdef DEBUG_IR_RECEIVER
-        Serial.println("All bits read, returning 0");
-#endif
         return 0;
     }
 
@@ -42,11 +50,6 @@ uint32_t Quest_IR_Receiver::readBits(uint8_t bitsToRead)
     if (nextBitPosition + bitsToRead > bitsReceived)
     {
         bitsToRead = bitsReceived - nextBitPosition;
-
-#ifdef DEBUG_IR_RECEIVER
-        Serial.print("Reading more bits than received, only returning ");
-        Serial.println(bitsToRead);
-#endif
     }
 
     uint32_t readBits = 0;
@@ -108,42 +111,35 @@ void Quest_IR_Receiver::clearBuffer()
 
 void Quest_IR_Receiver::attemptDecode()
 {
-    if (recvGlobal.recvLength < 4)
+    // minimum bits needed: header (2) + at least one data bit (1) + CRC (4) + leadout (1)
+    if (recvGlobal.recvLength < 8)
     {
-#ifdef DEBUG_IR_RECEIVER
-        Serial.println("Not enough signals received");
-#endif
-
+        setInvalidPacketState(SignalTooShort);
         return;
     }
 
-    bool headerMatch = checkBuffer(QIR_HEADER_MARK, recvGlobal.recvBuffer[1]) && checkBuffer(QIR_HEADER_SPACE, recvGlobal.recvBuffer[2]);
+    // verify the packet's header is QIR
+    bool headerMatch = checkSignal(QIR_HEADER_MARK, recvGlobal.recvBuffer[1]) && checkSignal(QIR_HEADER_SPACE, recvGlobal.recvBuffer[2]);
     if (!headerMatch)
     {
-#ifdef DEBUG_IR_RECEIVER
-        Serial.println("Header mismatch");
-#endif
+        setInvalidPacketState(HeaderMismatch);
         return;
     }
 
-    // skip the last delay
-    bufIndex_t lastBit = recvGlobal.recvLength - 1;
+    // skip the leadout (1 bit) and CRC (4 bits)
+    bufIndex_t lastBit = recvGlobal.recvLength - 4;
 
     // skip the last mark if it is just padding
-    if (checkBuffer(QIR_PULSE_PADDING, recvGlobal.recvBuffer[lastBit - 1]))
+    if (checkSignal(QIR_PULSE_PADDING, recvGlobal.recvBuffer[lastBit - 1]))
     {
         lastBit--;
-
-#ifdef DEBUG_IR_RECEIVER
-        Serial.println("Padding on last bit, ignoring it");
-#endif
     }
 
     // calculate the number of expected bits, don't bother counting as we go
     bitsReceived = lastBit - 3;
 
 #ifdef DEBUG_IR_RECEIVER
-    Serial.print("Bits received: ");
+    Serial.print(F("Bits received: "));
     Serial.println(bitsReceived);
 #endif
 
@@ -152,24 +148,16 @@ void Quest_IR_Receiver::attemptDecode()
     uint16_t bitMask = 0b10000000;
     for (bufIndex_t i = 3; i < lastBit; i++)
     {
-        uint16_t signal = recvGlobal.recvBuffer[i];
-        if (checkBuffer(QIR_PULSE_ZERO, signal))
-        {
-            // it's a 0, skip
-        }
-        else if (checkBuffer(QIR_PULSE_ONE, signal))
+        // buffer is all zero's, only update when a 1 is received
+        if (signalToBit(recvGlobal.recvBuffer[i]))
         {
             // it's a 1, update the buffer
             buffer |= bitMask;
         }
-        else
+
+        // if signalToBit flagged an invalid pulse, stop decoding
+        if (decodeState == InvalidPulse)
         {
-#ifdef DEBUG_IR_RECEIVER
-            Serial.print("Bad signal, stopping decode: ");
-            Serial.println(signal);
-#endif
-            // bad signal, stop decoding
-            clearBuffer();
             return;
         }
 
@@ -192,19 +180,117 @@ void Quest_IR_Receiver::attemptDecode()
         bitBuffers[bufferPos] = buffer;
     }
 
+    // make sure the packet bits have not been corrupted
+    if (!verifyCRC())
+    {
+        return;
+    }
+
+    // valid packet received!
+    decodeState = Decoded;
+
 #ifdef DEBUG_IR_RECEIVER
-    Serial.print("Decode successful: ");
+    Serial.print(F("Decode successful: "));
     for (uint8_t i = 0; i < QIR_BIT_BUFFERS; i++)
     {
         Serial.print(bitBuffers[i], BIN);
-        Serial.print(" ");
+        Serial.print(F(" "));
     }
     Serial.println();
 #endif
 }
 
-bool Quest_IR_Receiver::checkBuffer(uint16_t expected, uint16_t actual)
+bool Quest_IR_Receiver::verifyCRC()
+{
+    // decode the received CRC
+    uint8_t expectedCRC = decodeCRCSignals();
+
+    // if the decoded CRC contained an invalid pulse, stop decoding
+    if (decodeState == InvalidPulse)
+    {
+        return false;
+    }
+
+    uint8_t actualCRC = calculateCRC(bitBuffers, bitsReceived);
+    if (expectedCRC != actualCRC)
+    {
+#ifdef DEBUG_IR_RECEIVER
+        Serial.print(F("CRC check failed. Expected: "));
+        Serial.print(expectedCRC, BIN);
+        Serial.print(F("  Calculated: "));
+        Serial.println(actualCRC, BIN);
+        ;
+#endif
+
+        setInvalidPacketState(InvalidCRC);
+        return false;
+    }
+
+    return true;
+}
+
+uint8_t Quest_IR_Receiver::decodeCRCSignals()
+{
+    uint8_t crc = 0;
+
+    // the CRC is in the last 4 bits before the final space
+    bufIndex_t crcFirstBit = recvGlobal.decodeLength - 4;
+    if (signalToBit(recvGlobal.recvBuffer[crcFirstBit]))
+    {
+        crc |= 0b1000;
+    }
+    if (signalToBit(recvGlobal.recvBuffer[crcFirstBit + 1]))
+    {
+        crc |= 0b0100;
+    }
+    if (signalToBit(recvGlobal.recvBuffer[crcFirstBit + 2]))
+    {
+        crc |= 0b0010;
+    }
+    if (signalToBit(recvGlobal.recvBuffer[crcFirstBit + 3]))
+    {
+        crc |= 0b0001;
+    }
+    return crc;
+}
+
+inline bool Quest_IR_Receiver::checkSignal(uint16_t expected, uint16_t actual)
 {
     int32_t diff = abs((int32_t)actual - expected);
     return diff < QIR_ERROR_MARGIN;
+}
+
+inline bool Quest_IR_Receiver::signalToBit(uint16_t signal)
+{
+    if (checkSignal(QIR_PULSE_ZERO, signal))
+    {
+        return false;
+    }
+    else if (checkSignal(QIR_PULSE_ONE, signal))
+    {
+        return true;
+    }
+    else
+    {
+        // pulse width is unknown, likely a corrupted signal
+        setInvalidPacketState(InvalidPulse);
+
+#ifdef DEBUG_IR_RECEIVER
+        Serial.print(F("Invalid signal: "));
+        Serial.println(signal);
+#endif
+        return false;
+    }
+}
+
+void Quest_IR_Receiver::setInvalidPacketState(DecodeState state)
+{
+    decodeState = state;
+
+#ifdef DEBUG_IR_RECEIVER
+    Serial.print(F("Invalid packate state: "));
+    Serial.println(state);
+#endif
+
+    clearBuffer();
 }
