@@ -16,6 +16,8 @@
 #ifndef quest_ir_format_h
 #define quest_ir_format_h
 
+#include <Arduino.h>
+
 #define QIR_PULSE 500
 #define QIR_ERROR_MARGIN 250
 
@@ -30,5 +32,7 @@
 #define QIR_MAX_BITS 256
 #define QIR_BIT_BUFFERS QIR_MAX_BITS / 8
 #define QIR_TOP_BIT 0x80000000
+
+uint8_t calculateCRC(uint8_t *bitBuffers, uint16_t bits);
 
 #endif

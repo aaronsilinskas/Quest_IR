@@ -23,6 +23,9 @@ public:
 private:
   uint16_t nextBitPosition;
   uint8_t bitBuffers[QIR_BIT_BUFFERS];
+
+  void sendSpace(bool one);
+  void sendMark(bool one);
 };
 
 #endif

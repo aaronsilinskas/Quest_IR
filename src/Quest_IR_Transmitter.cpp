@@ -92,12 +92,15 @@ bool Quest_IR_Transmitter::sendBits()
         return false;
     }
 
-    // start IR transmit
-    enableIROut(38);
+    uint8_t crc = calculateCRC(bitBuffers, nextBitPosition);
 
 #ifdef DEBUG_IR_TRANSMITTER
-    Serial.println("Sending Quest Message...");
+    Serial.print("Sending Quest Message with CRC: ");
+    Serial.println(crc, BIN);
 #endif
+
+    // start IR transmit
+    enableIROut(38);
 
     // send the header
     mark(QIR_HEADER_MARK);
@@ -122,37 +125,11 @@ bool Quest_IR_Transmitter::sendBits()
 
         if (bitPos & 1)
         {
-            if (bitBuffers[bufferPos] & bitMask)
-            {
-#ifdef DEBUG_IR_TRANSMITTER
-                Serial.println("S_1");
-#endif
-                space(QIR_PULSE_ONE);
-            }
-            else
-            {
-#ifdef DEBUG_IR_TRANSMITTER
-                Serial.println("S_0");
-#endif
-                space(QIR_PULSE_ZERO);
-            }
+            sendSpace(bitBuffers[bufferPos] & bitMask);
         }
         else
         {
-            if (bitBuffers[bufferPos] & bitMask)
-            {
-#ifdef DEBUG_IR_TRANSMITTER
-                Serial.println("M_1");
-#endif
-                mark(QIR_PULSE_ONE);
-            }
-            else
-            {
-#ifdef DEBUG_IR_TRANSMITTER
-                Serial.println("M_0");
-#endif
-                mark(QIR_PULSE_ZERO);
-            }
+            sendMark(bitBuffers[bufferPos] & bitMask);
         }
 
         // move to the next bit in the buffer
@@ -173,7 +150,50 @@ bool Quest_IR_Transmitter::sendBits()
 #endif
         mark(QIR_PULSE_PADDING);
     }
+
+    // send the CRC
+    sendSpace(crc & 0b1000);
+    sendMark(crc & 0b0100);
+    sendSpace(crc & 0b0010);
+    sendMark(crc & 0b0001);
+
     space(QIR_LEAD_OUT);
 
     return true;
+}
+
+inline void Quest_IR_Transmitter::sendSpace(bool one)
+{
+    if (one)
+    {
+#ifdef DEBUG_IR_TRANSMITTER
+        Serial.println("S_1");
+#endif
+        space(QIR_PULSE_ONE);
+    }
+    else
+    {
+#ifdef DEBUG_IR_TRANSMITTER
+        Serial.println("S_0");
+#endif
+        space(QIR_PULSE_ZERO);
+    }
+}
+
+inline void Quest_IR_Transmitter::sendMark(bool one)
+{
+    if (one)
+    {
+#ifdef DEBUG_IR_TRANSMITTER
+        Serial.println("M_1");
+#endif
+        mark(QIR_PULSE_ONE);
+    }
+    else
+    {
+#ifdef DEBUG_IR_TRANSMITTER
+        Serial.println("M_0");
+#endif
+        mark(QIR_PULSE_ZERO);
+    }
 }
