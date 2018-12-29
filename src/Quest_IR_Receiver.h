@@ -27,6 +27,8 @@ public:
   uint16_t bitsReceived;
 
   void begin(uint8_t irPin);
+  void enable();
+  void disable();
   void enableBlink(bool enabled);
   bool hasData();
   uint16_t unreadBits();

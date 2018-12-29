@@ -6,6 +6,16 @@ void Quest_IR_Receiver::begin(uint8_t irPin)
     receiver.enableIRIn();
 }
 
+void Quest_IR_Receiver::enable()
+{
+    receiver.enableIRIn();
+}
+
+void Quest_IR_Receiver::disable()
+{
+    receiver.disableIRIn();
+}
+
 void Quest_IR_Receiver::enableBlink(bool enabled)
 {
     receiver.blink13(enabled);
