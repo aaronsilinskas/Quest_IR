@@ -5,10 +5,10 @@
  * compatibility with the Quest stack running on a single MCU.
  */
 #include <Quest_IR_Transmitter.h>
-#include <Quest_IR_BitWriter.h>
+#include <Quest_BitWriter.h>
 
 Quest_IR_Transmitter irTransmitter;
-Quest_IR_BitWriter irBitWriter = Quest_IR_BitWriter(irTransmitter.encodedBits, QIR_BUFFER_SIZE);
+Quest_BitWriter irBitWriter = Quest_BitWriter(irTransmitter.encodedBits, QIR_BUFFER_SIZE);
 
 int8_t patternToSend = 0;
 

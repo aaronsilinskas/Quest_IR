@@ -7,7 +7,7 @@
 
 #include "irlib2/IRLibSendBase.h"
 #include "Quest_IR_Format.h"
-#include "Quest_IR_BitReader.h"
+#include <Quest_BitReader.h>
 
 // #define DEBUG_IR_TRANSMITTER
 
@@ -22,7 +22,7 @@ public:
   bool sendBits(uint16_t encodedBitsToSend);
 
 private:
-  Quest_IR_BitReader encodeReader = Quest_IR_BitReader(encodedBits, QIR_BUFFER_SIZE);
+  Quest_BitReader encodeReader = Quest_BitReader(encodedBits, QIR_BUFFER_SIZE);
   void sendSpace(bool one);
   void sendMark(bool one);
 };

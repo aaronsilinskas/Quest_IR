@@ -7,7 +7,7 @@
 
 #include "./irlib2/IRLibRecvPCI.h"
 #include "Quest_IR_Format.h"
-#include "Quest_IR_BitWriter.h"
+#include <Quest_BitWriter.h>
 
 // #define DEBUG_IR_RECEIVER
 
@@ -38,7 +38,7 @@ public:
 
 private:
   IRrecvPCI receiver;
-  Quest_IR_BitWriter decodeWriter = Quest_IR_BitWriter(decodedBits, QIR_BUFFER_SIZE);
+  Quest_BitWriter decodeWriter = Quest_BitWriter(decodedBits, QIR_BUFFER_SIZE);
 
   void clearBuffer();
   void attemptDecode();
