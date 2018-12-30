@@ -21,7 +21,7 @@ void Quest_IR_Receiver::enableBlink(bool enabled)
     receiver.blink13(enabled);
 }
 
-bool Quest_IR_Receiver::hasData()
+bool Quest_IR_Receiver::hasSignal()
 {
     if (receiver.getResults())
     {
@@ -34,62 +34,9 @@ bool Quest_IR_Receiver::hasData()
 void Quest_IR_Receiver::reset()
 {
     decodeState = NoData;
-    clearBuffer();
+    decodedBitCount = 0;
+    decodeWriter.reset();
     receiver.enableIRIn();
-}
-
-uint16_t Quest_IR_Receiver::unreadBits()
-{
-    // bit position can be greater than received when more bits are read than available
-    if (nextBitPosition > bitsReceived)
-    {
-        return 0;
-    }
-    return bitsReceived - nextBitPosition;
-}
-
-uint32_t Quest_IR_Receiver::readBits(uint8_t bitsToRead)
-{
-    // already read all of the bits
-    if (nextBitPosition >= bitsReceived)
-    {
-        return 0;
-    }
-
-    // do not read more bits than received
-    if (nextBitPosition + bitsToRead > bitsReceived)
-    {
-        bitsToRead = bitsReceived - nextBitPosition;
-    }
-
-    uint32_t readBits = 0;
-
-    uint8_t bufferPos = nextBitPosition >> 3;
-    uint8_t buffer = bitBuffers[bufferPos];
-    uint8_t bufferBitMask = 0b10000000 >> (nextBitPosition & 0b111);
-
-    for (uint16_t i = 0; i < bitsToRead; i++)
-    {
-        // shift the read bits, and set the next bit from the buffer
-        readBits <<= 1;
-        if (buffer & bufferBitMask)
-        {
-            readBits |= 1;
-        }
-
-        // move to the next bit in the buffer
-        bufferBitMask >>= 1;
-        if (bufferBitMask == 0)
-        {
-            // the current buffer has been read, move to the next
-            bufferPos++;
-            bufferBitMask = 0b10000000;
-        }
-    }
-
-    nextBitPosition += bitsToRead;
-
-    return readBits;
 }
 
 void Quest_IR_Receiver::printRawSignal()
@@ -114,9 +61,8 @@ void Quest_IR_Receiver::printRawSignal()
 
 void Quest_IR_Receiver::clearBuffer()
 {
-    nextBitPosition = 0;
-    bitsReceived = 0;
-    memset(bitBuffers, 0, sizeof(bitBuffers));
+    decodedBitCount = 0;
+    decodeWriter.reset();
 }
 
 void Quest_IR_Receiver::attemptDecode()
@@ -145,50 +91,28 @@ void Quest_IR_Receiver::attemptDecode()
         lastBit--;
     }
 
-    // calculate the number of expected bits, don't bother counting as we go
-    bitsReceived = lastBit - 3;
-
 #ifdef DEBUG_IR_RECEIVER
     Serial.print(F("Bits received: "));
-    Serial.println(bitsReceived);
+    Serial.println(lastBit - 3); // don't count the 2 header pulses
 #endif
 
-    uint8_t bufferPos = 0;
-    uint8_t buffer = 0;
-    uint16_t bitMask = 0b10000000;
     for (bufIndex_t i = 3; i < lastBit; i++)
     {
-        // buffer is all zero's, only update when a 1 is received
-        if (signalToBit(recvGlobal.recvBuffer[i]))
-        {
-            // it's a 1, update the buffer
-            buffer |= bitMask;
-        }
+        decodeWriter.writeBit(signalToBit(recvGlobal.recvBuffer[i]));
 
         // if signalToBit flagged an invalid pulse, stop decoding
         if (decodeState == InvalidPulse)
         {
             return;
         }
-
-        // move to the next bit in the buffer
-        bitMask >>= 1;
-        if (bitMask == 0)
-        {
-            // the current buffer is full, store it and move to the next
-            bitBuffers[bufferPos] = buffer;
-            buffer = 0;
-
-            bufferPos++;
-            bitMask = 0b10000000;
-        }
     }
 
-    // make sure the last buffer is stored in cases where bits received is not byte-aligned
-    if (bufferPos < QIR_BIT_BUFFERS)
-    {
-        bitBuffers[bufferPos] = buffer;
-    }
+    decodedBitCount = decodeWriter.bitsWritten();
+
+#ifdef DEBUG_IR_RECEIVER
+    Serial.print(F("Decoded bits: "));
+    printBinaryArray(decodedBits, QIR_BUFFER_SIZE);
+#endif
 
     // make sure the packet bits have not been corrupted
     if (!verifyCRC())
@@ -200,13 +124,7 @@ void Quest_IR_Receiver::attemptDecode()
     decodeState = Decoded;
 
 #ifdef DEBUG_IR_RECEIVER
-    Serial.print(F("Decode successful: "));
-    for (uint8_t i = 0; i < QIR_BIT_BUFFERS; i++)
-    {
-        Serial.print(bitBuffers[i], BIN);
-        Serial.print(F(" "));
-    }
-    Serial.println();
+    Serial.println(F("Decode successful"));
 #endif
 }
 
@@ -221,14 +139,14 @@ bool Quest_IR_Receiver::verifyCRC()
         return false;
     }
 
-    uint8_t actualCRC = calculateCRC(bitBuffers, bitsReceived);
-    if (expectedCRC != actualCRC)
+    uint8_t calculatedCRC = calculateCRC(decodedBits, decodedBitCount);
+    if (expectedCRC != calculatedCRC)
     {
 #ifdef DEBUG_IR_RECEIVER
         Serial.print(F("CRC check failed. Expected: "));
         Serial.print(expectedCRC, BIN);
         Serial.print(F("  Calculated: "));
-        Serial.println(actualCRC, BIN);
+        Serial.println(calculatedCRC, BIN);
         ;
 #endif
 

@@ -7,6 +7,7 @@
 
 #include "./irlib2/IRLibRecvPCI.h"
 #include "Quest_IR_Format.h"
+#include "Quest_IR_BitWriter.h"
 
 // #define DEBUG_IR_RECEIVER
 
@@ -24,22 +25,20 @@ class Quest_IR_Receiver
 {
 public:
   DecodeState decodeState;
-  uint16_t bitsReceived;
+  uint8_t decodedBits[QIR_BUFFER_SIZE];
+  uint16_t decodedBitCount;
 
   void begin(uint8_t irPin);
   void enable();
   void disable();
   void enableBlink(bool enabled);
-  bool hasData();
-  uint16_t unreadBits();
-  uint32_t readBits(uint8_t bitsToRead);
+  bool hasSignal();
   void reset();
   void printRawSignal();
 
 private:
   IRrecvPCI receiver;
-  uint16_t nextBitPosition;
-  uint8_t bitBuffers[QIR_BIT_BUFFERS];
+  Quest_IR_BitWriter decodeWriter = Quest_IR_BitWriter(decodedBits, QIR_BUFFER_SIZE);
 
   void clearBuffer();
   void attemptDecode();
