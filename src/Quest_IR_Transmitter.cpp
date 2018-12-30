@@ -21,78 +21,30 @@ void Quest_IR_Transmitter::sendRawSignal(uint16_t *buffer, uint8_t length)
     }
 }
 
-void Quest_IR_Transmitter::clearBits()
-{
-    nextBitPosition = 0;
-    memset(bitBuffers, 0, sizeof(bitBuffers));
-}
-
-bool Quest_IR_Transmitter::addBits(uint32_t data, uint8_t bitsToSend)
-{
-#ifdef DEBUG_IR_TRANSMITTER
-    Serial.print("Adding: ");
-    Serial.print(data, BIN);
-    Serial.print(" (");
-    Serial.print(bitsToSend);
-    Serial.print(" bits)");
-    Serial.print(" to Position: ");
-    Serial.println(nextBitPosition);
-#endif
-
-    // make sure there is enough room in the buffer
-    uint16_t bitsAfterAdd = nextBitPosition + bitsToSend;
-    if (bitsAfterAdd >= QIR_MAX_BITS)
-    {
-        return false;
-    }
-
-    // shift the data so the first bit as left-most
-    data <<= (32 - bitsToSend);
-
-    // add each bit from the data to the correct bit buffer
-    for (uint16_t bitPos = nextBitPosition; bitPos < bitsAfterAdd; bitPos++)
-    {
-        if (data & QIR_TOP_BIT)
-        {
-            uint8_t bufferPos = bitPos >> 3;
-            uint8_t bitMask = 0b10000000 >> (bitPos & 0b111);
-
-#ifdef DEBUG_IR_TRANSMITTER
-            Serial.print("Bit: ");
-            Serial.print(bitPos);
-            Serial.print(" Buffer: ");
-            Serial.print(bufferPos);
-            Serial.print(" Data: ");
-            Serial.print(bitBuffers[bufferPos], BIN);
-            Serial.print(" | ");
-            Serial.print(bitMask, BIN);
-            Serial.print(" = ");
-#endif
-
-            bitBuffers[bufferPos] = bitBuffers[bufferPos] | bitMask;
-
-#ifdef DEBUG_IR_TRANSMITTER
-            Serial.println(bitBuffers[bufferPos], BIN);
-#endif
-        }
-        data <<= 1;
-    }
-
-    // update the bit position after adding the data
-    nextBitPosition = bitsAfterAdd;
-
-    return true;
-}
-
-bool Quest_IR_Transmitter::sendBits()
+bool Quest_IR_Transmitter::sendBits(uint16_t encodedBitsToSend)
 {
     // no bits to send?
-    if (nextBitPosition == 0)
+    if (encodedBitsToSend == 0)
     {
+#ifdef DEBUG_IR_TRANSMITTER
+        Serial.println("Trying to send with no encoded bits: ");
+#endif
         return false;
     }
 
-    uint8_t crc = calculateCRC(bitBuffers, nextBitPosition);
+    // too many bits to send?
+    if (encodedBitsToSend > (QIR_BUFFER_SIZE << 3))
+    {
+#ifdef DEBUG_IR_TRANSMITTER
+        Serial.print("Trying to send too many bits: ");
+        Serial.println(encodedBitsToSend);
+#endif
+        return false;
+    }
+
+    encodeReader.reset(encodedBitsToSend);
+
+    uint8_t crc = calculateCRC(encodedBits, encodedBitsToSend);
 
 #ifdef DEBUG_IR_TRANSMITTER
     Serial.print("Sending Quest Message with CRC: ");
@@ -107,47 +59,22 @@ bool Quest_IR_Transmitter::sendBits()
     space(QIR_HEADER_SPACE);
 
     // encode each bit in the buffer, one bit encoded in each mark and each space
-    uint8_t bufferPos = 0;
-    uint8_t bitMask = 0b10000000;
-    for (uint16_t bitPos = 0; bitPos < nextBitPosition; bitPos++)
+    for (uint16_t bitPos = 0; bitPos < encodedBitsToSend; bitPos++)
     {
-#ifdef DEBUG_IR_TRANSMITTER
-        Serial.print("Bit: ");
-        Serial.print(bitPos);
-        Serial.print(" Buffer: ");
-        Serial.print(bufferPos);
-        Serial.print(" Data: ");
-        Serial.print(bitBuffers[bufferPos], BIN);
-        Serial.print(" & ");
-        Serial.print(bitMask, BIN);
-        Serial.print(" = ");
-#endif
-
         if (bitPos & 1)
         {
-            sendSpace(bitBuffers[bufferPos] & bitMask);
+            sendSpace(encodeReader.readBit());
         }
         else
         {
-            sendMark(bitBuffers[bufferPos] & bitMask);
-        }
-
-        // move to the next bit in the buffer
-        bitMask >>= 1;
-        if (bitMask == 0)
-        {
-            // finished the current buffer, move to the next one
-            bufferPos++;
-            bitMask = 0b10000000;
+            sendMark(encodeReader.readBit());
         }
     }
 
     // if sending an odd number of bits, add an extra mark to ensure all bits are sent
-    if ((nextBitPosition & 1) == 0)
+    bool sendPadding = (encodedBitsToSend & 1) == 0;
+    if (sendPadding)
     {
-#ifdef DEBUG_IR_TRANSMITTER
-        Serial.println("M_PADDING");
-#endif
         mark(QIR_PULSE_PADDING);
     }
 
@@ -159,6 +86,16 @@ bool Quest_IR_Transmitter::sendBits()
 
     space(QIR_LEAD_OUT);
 
+#ifdef DEBUG_IR_TRANSMITTER
+    Serial.print("Bits sent: ");
+    Serial.println(encodedBitsToSend);
+    printBinaryArray(encodedBits, QIR_BUFFER_SIZE);
+    if (sendPadding)
+    {
+        Serial.println("Padding signal sent");
+    }
+#endif
+
     return true;
 }
 
@@ -166,16 +103,10 @@ inline void Quest_IR_Transmitter::sendSpace(bool one)
 {
     if (one)
     {
-#ifdef DEBUG_IR_TRANSMITTER
-        Serial.println("S_1");
-#endif
         space(QIR_PULSE_ONE);
     }
     else
     {
-#ifdef DEBUG_IR_TRANSMITTER
-        Serial.println("S_0");
-#endif
         space(QIR_PULSE_ZERO);
     }
 }
@@ -184,16 +115,10 @@ inline void Quest_IR_Transmitter::sendMark(bool one)
 {
     if (one)
     {
-#ifdef DEBUG_IR_TRANSMITTER
-        Serial.println("M_1");
-#endif
         mark(QIR_PULSE_ONE);
     }
     else
     {
-#ifdef DEBUG_IR_TRANSMITTER
-        Serial.println("M_0");
-#endif
         mark(QIR_PULSE_ZERO);
     }
 }

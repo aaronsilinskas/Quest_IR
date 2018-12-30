@@ -1,7 +1,7 @@
 /* receive-encoded.ino Example sketch for Quest IR Library
  * This example will receive IR signals and decode them
  * based on the Quest IR format.
- * 
+ *
  * Note: Update PIN_IR_RECEIVER to the pin connected to
  * an IR receiver such as the Vishay TSOP38238.
  */
@@ -24,19 +24,25 @@ void setup()
 void loop()
 {
     // check to see if the receiver decoded a signal
-    if (irReceiver.hasData())
+    if (irReceiver.hasSignal())
     {
         // data was received, dump it to Serial
         irReceiver.printRawSignal();
 
         // output the received bits
         Serial.print("Received ");
-        Serial.print(irReceiver.bitsReceived);
+        Serial.print(irReceiver.decodedBitCount);
         Serial.print(" bits: ");
 
-        for (int i = 0; i < irReceiver.bitsReceived / 8; i++)
+        uint8_t bytesWithData = irReceiver.decodedBitCount / 8;
+        if (irReceiver.decodedBitCount % 8 > 0)
         {
-            uint8_t bits = irReceiver.readBits(8);
+            bytesWithData++;
+        }
+
+        for (int i = 0; i < bytesWithData; i++)
+        {
+            uint8_t bits = irReceiver.decodedBits[i];
             Serial.print(bits, BIN);
             Serial.print(" ");
         }
