@@ -1,4 +1,4 @@
-/* send-encoded.cpp Example sketch for Quest IR Library
+/* send-encoded.ino Example sketch for Quest IR Library
  * This example will send encoded data over IR.
  *
  * Note: For ItsyBitsy M0, the IR LED is set to pin 4 for

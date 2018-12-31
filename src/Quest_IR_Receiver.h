@@ -11,7 +11,7 @@
 
 // #define DEBUG_IR_RECEIVER
 
-enum DecodeState
+enum IRDecodeState
 {
   NoData,         // Ready for data
   SignalTooShort, // Not enough data received to be a valid QIR packet
@@ -24,7 +24,7 @@ enum DecodeState
 class Quest_IR_Receiver
 {
 public:
-  DecodeState decodeState;
+  IRDecodeState decodeState;
   uint8_t decodedBits[QIR_BUFFER_SIZE];
   uint16_t decodedBitCount;
 
@@ -46,7 +46,7 @@ private:
   uint8_t decodeCRCSignals();
   bool checkSignal(uint16_t expected, uint16_t actual);
   bool signalToBit(uint16_t signal);
-  void setInvalidPacketState(DecodeState state);
+  void setInvalidPacketState(IRDecodeState state);
 };
 
 #endif

@@ -211,7 +211,7 @@ inline bool Quest_IR_Receiver::signalToBit(uint16_t signal)
     }
 }
 
-void Quest_IR_Receiver::setInvalidPacketState(DecodeState state)
+void Quest_IR_Receiver::setInvalidPacketState(IRDecodeState state)
 {
     decodeState = state;
 
