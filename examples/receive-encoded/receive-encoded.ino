@@ -40,13 +40,10 @@ void loop()
             bytesWithData++;
         }
 
-        for (int i = 0; i < bytesWithData; i++)
-        {
-            uint8_t bits = irReceiver.decodedBits[i];
-            Serial.print(bits, BIN);
-            Serial.print(" ");
-        }
-        Serial.println();
+        Serial.print("Bytes with data: ");
+        Serial.println(bytesWithData);
+
+        printBinaryArray(irReceiver.decodedBits, bytesWithData, " ");
 
         // make sure the receiver is reset to decode the next signal
         irReceiver.reset();
