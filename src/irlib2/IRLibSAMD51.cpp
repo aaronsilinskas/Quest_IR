@@ -29,7 +29,7 @@ void initializeSAMD51PWM(uint16_t khz) {
   uint32_t attr = pinDesc.ulPinAttribute;
   //If PWM unsupported then do nothing and exit
 
-  if ( !((attr & PIN_ATTR_PWM) == PIN_ATTR_PWM) ) {
+  if ( !((attr & PIN_ATTR_PWM_E) == PIN_ATTR_PWM_E) ) {
 	  return;
   };
   
