@@ -187,7 +187,8 @@ inline bool Quest_IR_Receiver::checkSignal(uint16_t expected, uint16_t actual)
 {
     int32_t diff = abs((int32_t)actual - expected);
     if (diff < QIR_ERROR_MARGIN) {
-        decodeMaxNoise = max(decodeMaxNoise, diff);
+        uint16_t currentNoise = (diff * 0xFF) / QIR_ERROR_MARGIN;
+        decodeMaxNoise = max(decodeMaxNoise, currentNoise);
         return true;
     }
     return false;
