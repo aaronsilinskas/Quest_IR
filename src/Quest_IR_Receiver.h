@@ -27,6 +27,7 @@ public:
   IRDecodeState decodeState;
   uint8_t decodedBits[QIR_BUFFER_SIZE];
   uint16_t decodedBitCount;
+  uint16_t decodeMaxNoise;
 
   void begin(uint8_t irPin);
   void enable();

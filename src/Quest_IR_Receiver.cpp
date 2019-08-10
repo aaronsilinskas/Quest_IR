@@ -34,6 +34,7 @@ bool Quest_IR_Receiver::hasSignal()
 void Quest_IR_Receiver::reset()
 {
     decodeState = NoData;
+    decodeMaxNoise = 0;
     decodedBitCount = 0;
     decodeWriter.reset();
     receiver.enableIRIn();
@@ -185,7 +186,11 @@ uint8_t Quest_IR_Receiver::decodeCRCSignals()
 inline bool Quest_IR_Receiver::checkSignal(uint16_t expected, uint16_t actual)
 {
     int32_t diff = abs((int32_t)actual - expected);
-    return diff < QIR_ERROR_MARGIN;
+    if (diff < QIR_ERROR_MARGIN) {
+        decodeMaxNoise = max(decodeMaxNoise, diff);
+        return true;
+    }
+    return false;
 }
 
 inline bool Quest_IR_Receiver::signalToBit(uint16_t signal)
